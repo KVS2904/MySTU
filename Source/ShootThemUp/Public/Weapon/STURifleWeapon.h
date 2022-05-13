@@ -28,6 +28,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
 		float DamageAmount = 10.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
+		float BulletSpread = 1.5f;
+
 	UPROPERTY(VisibleAnywhere, Category = "VFX")
 		USTUWeaponFXComponent* WeaponFXComponent;
 
@@ -40,6 +43,7 @@ protected:
 
 	virtual void BeginPlay() override;
 	virtual void MakeShot() override;
+	virtual bool GetTraceData(FVector& TraceStart, FVector& TraceEnd) const override;
 
 private:
 	FTimerHandle ShotTimerHandle;
@@ -47,6 +51,8 @@ private:
 	UPROPERTY()
 		UNiagaraComponent* MuzzleFXComponent;
 
+	AController* GetController() const;
+	void MakeDamage(const FHitResult& HitResult);
 	void InitMuzzleFX();
 	void SetMuzzleFXVisibily(bool Visibility);
 	void SpawnTraceFX(const FVector& TraceStart, const FVector& TraceEnd);

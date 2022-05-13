@@ -37,6 +37,55 @@ void ASTUBaseWeapon::StopFire() {}
 
 void ASTUBaseWeapon::MakeShot() {}
 
+bool ASTUBaseWeapon::GetTraceData(FVector& TraceStart, FVector& TraceEnd) const
+{
+	FVector ViewLocation;
+	FRotator ViewRotation;
+	if (!GetPlayerViewPoint(ViewLocation, ViewRotation)) return false;
+
+	TraceStart = ViewLocation;
+	const FVector ShootDirection = ViewRotation.Vector();
+	TraceEnd = TraceStart + ShootDirection * TraceMaxDistance;
+	return true;
+}
+
+bool ASTUBaseWeapon::GetPlayerViewPoint(FVector& ViewLocation, FRotator& ViewRotation) const
+{
+	const auto STUCharacter = Cast<ACharacter>(GetOwner());
+	if (!STUCharacter) return false;
+
+	if (STUCharacter->IsPlayerControlled())
+	{
+		const auto Controller = STUCharacter->GetController<APlayerController>();
+		if (!Controller) return false;
+
+		Controller->GetPlayerViewPoint(ViewLocation, ViewRotation);
+	}
+	else
+	{
+		ViewLocation = GetMuzzleWorldLocation();
+		ViewRotation = WeaponMesh->GetSocketRotation(MuzzleSocketName);
+	}
+
+	return true;
+}
+
+FVector ASTUBaseWeapon::GetMuzzleWorldLocation() const
+{
+	return WeaponMesh->GetSocketLocation(MuzzleSocketName);
+}
+
+void ASTUBaseWeapon::MakeHit(FHitResult& HitResult, const FVector& TraceStart, const FVector& TraceEnd)
+{
+	if (!GetWorld()) return;
+
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.bReturnPhysicalMaterial = true;
+	CollisionParams.AddIgnoredActor(GetOwner());
+
+	GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECollisionChannel::ECC_Visibility, CollisionParams);
+}
+
 void ASTUBaseWeapon::DecreaseAmmo()
 {
 	if (CurrentAmmo.Bullets == 0)
