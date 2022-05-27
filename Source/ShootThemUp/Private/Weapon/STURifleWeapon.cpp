@@ -9,6 +9,9 @@
 #include "GameFramework/Controller.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundCue.h"
+#include "Components/AudioComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSTURifleWeapon, All, All)
 
@@ -27,7 +30,7 @@ void ASTURifleWeapon::BeginPlay()
 
 void ASTURifleWeapon::StartFire()
 {
-	InitMuzzleFX();
+	InitFX();
 	GetWorldTimerManager().SetTimer(ShotTimerHandle, this,
 		&ASTURifleWeapon::MakeShot, TimeBetweenShots, true);
 	MakeShot();
@@ -36,7 +39,7 @@ void ASTURifleWeapon::StartFire()
 void ASTURifleWeapon::StopFire()
 {
 	GetWorldTimerManager().ClearTimer(ShotTimerHandle);
-	SetMuzzleFXVisibily(false);
+	SetFXActive(false);
 }
 
 void ASTURifleWeapon::MakeShot()
@@ -66,57 +69,6 @@ void ASTURifleWeapon::MakeShot()
 	}
 	SpawnTraceFX(GetMuzzleWorldLocation(), TraceFXEnd);
 	DecreaseAmmo();
-
-	/*
-	const auto Player = Cast<ACharacter>(GetOwner());
-	if (!Player)return;
-
-	FVector ViewLocation;
-	FRotator ViewRotation;
-
-	if (Player->IsPlayerControlled())
-	{
-		const auto Controller = Player->GetController<APlayerController>();
-		if (!Controller) return;
-		Controller->GetPlayerViewPoint(ViewLocation, ViewRotation);
-	}
-	else
-	{
-		ViewLocation = WeaponMesh->GetSocketLocation(MuzzleSocketName);
-		ViewRotation = WeaponMesh->GetSocketRotation(MuzzleSocketName);
-	}
-
-	const FTransform SocketTransform = WeaponMesh->GetSocketTransform(MuzzleSocketName);
-	const FVector TraceStart = ViewLocation;//SocketTransform.GetLocation();
-	const auto HalfRad = FMath::DegreesToRadians(BulletSpread);
-	const FVector ShootDirection = FMath::VRandCone(ViewRotation.Vector(), HalfRad);//SocketTransform.GetRotation().GetForwardVector();
-	const FVector TraceEnd = TraceStart + ShootDirection * TraceMaxDistance;
-
-	FCollisionQueryParams CollisionParams;
-	CollisionParams.AddIgnoredActor(GetOwner());
-	CollisionParams.bReturnPhysicalMaterial = true;
-	FHitResult HitResult;
-	GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECollisionChannel::ECC_Visibility, CollisionParams);
-	//UE_LOG(LogSTURifleWeapon, Display, TEXT("bBlockingHit: %i"), HitResult.bBlockingHit);
-
-	FVector TraceFXEnd = TraceEnd;
-	if (HitResult.bBlockingHit)
-	{
-		TraceFXEnd = HitResult.ImpactPoint;
-		WeaponFXComponent->PlayImpactFX(HitResult);
-		//makedamage()
-		UPROPERTY()
-			AActor* DamagedActor = HitResult.GetActor();
-
-		if (DamagedActor)
-		{
-			//UE_LOG(LogSTURifleWeapon, Display, TEXT("Take damage for %s"), *DamagedActor->GetName());
-			DamagedActor->TakeDamage(DamageAmount, FDamageEvent(), {}, this);
-		}
-	}
-	SpawnTraceFX(SocketTransform.GetLocation(), TraceFXEnd);
-	DecreaseAmmo();
-	*/
 }
 
 bool ASTURifleWeapon::GetTraceData(FVector& TraceStart, FVector& TraceEnd) const
@@ -148,21 +100,30 @@ void ASTURifleWeapon::MakeDamage(const FHitResult& HitResult)
 	DamagedActor->TakeDamage(DamageAmount, PointDamageEvent, GetController(), this);
 }
 
-void ASTURifleWeapon::InitMuzzleFX()
+void ASTURifleWeapon::InitFX()
 {
 	if (!MuzzleFXComponent)
 	{
 		MuzzleFXComponent = SpawnMuzzleFX();
 	}
-	SetMuzzleFXVisibily(true);
+	if (!FireAudioComponent)
+	{
+		FireAudioComponent = UGameplayStatics::SpawnSoundAttached(FireSound, WeaponMesh, MuzzleSocketName);
+	}
+	SetFXActive(true);
 }
 
-void ASTURifleWeapon::SetMuzzleFXVisibily(bool Visibility)
+void ASTURifleWeapon::SetFXActive(bool IsActive)
 {
 	if (MuzzleFXComponent)
 	{
-		MuzzleFXComponent->SetPaused(!Visibility);
-		MuzzleFXComponent->SetVisibility(Visibility, true);
+		MuzzleFXComponent->SetPaused(!IsActive);
+		MuzzleFXComponent->SetVisibility(IsActive, true);
+	}
+
+	if (FireAudioComponent)
+	{
+		FireAudioComponent->SetPaused(!IsActive);
 	}
 }
 
@@ -174,4 +135,16 @@ void ASTURifleWeapon::SpawnTraceFX(const FVector& TraceStart, const FVector& Tra
 	{
 		TraceFXComponent->SetNiagaraVariableVec3(TraceTargetName, TraceEnd);
 	}
+}
+
+void ASTURifleWeapon::Zoom(bool Enabled)
+{
+	const auto Controller = Cast<APlayerController>(GetController());
+	if (!Controller || !Controller->PlayerCameraManager) return;
+
+	if (Enabled)
+	{
+		DefaultCameraFOV = Controller->PlayerCameraManager->GetFOVAngle();
+	}
+	Controller->PlayerCameraManager->SetFOV(Enabled ? FOVZoomAngle : DefaultCameraFOV);
 }

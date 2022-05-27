@@ -9,6 +9,7 @@
 #include "Player/STUPlayerState.h"
 #include "STUUtils.h"
 #include "Components/STURespawnComponent.h"
+#include "Components/STUWeaponComponent.h"
 #include "EngineUtils.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSTUGameModeBase, All, All);
@@ -29,10 +30,9 @@ void ASTUGameModeBase::StartPlay()
 
 	SpawnBots();
 	CreateTeamsInfo();
-
 	CurrentRound = 1;
 	StartRound();
-	
+	SetMatchState(ESTUMatchState::InProgress);
 }
 
 UClass* ASTUGameModeBase::GetDefaultPawnClassForController_Implementation(AController* InController)
@@ -56,6 +56,24 @@ void ASTUGameModeBase::Killed(AController* KillerController, AController* Victim
 void ASTUGameModeBase::RespawnRequest(AController* Controller)
 {
 	ResetOnePlayer(Controller);
+}
+
+bool ASTUGameModeBase::SetPause(APlayerController* PC, FCanUnpause CanUnpauseDelegate)
+{
+	const auto PauseSet = Super::SetPause(PC, CanUnpauseDelegate);
+	if (PauseSet)
+	{
+		StopAllFire();
+		SetMatchState(ESTUMatchState::Pause);
+	}
+	return PauseSet;
+}
+
+bool ASTUGameModeBase::ClearPause()
+{
+	const auto PauseCleared = Super::ClearPause();
+	if (PauseCleared) SetMatchState(ESTUMatchState::InProgress);
+	return PauseCleared;
 }
 
 void ASTUGameModeBase::SpawnBots()
@@ -133,6 +151,7 @@ void ASTUGameModeBase::CreateTeamsInfo()
 
 		PlayerState->SetTeamID(TeamID);
 		PlayerState->SetTeamColor(DetermineColorByTeamID(TeamID));
+		PlayerState->SetPlayerName(Controller->IsPlayerController() ? "Player" : "Bot");
 		SetPlayerColor(Controller);
 
 		TeamID = TeamID == 1 ? 2 : 1;
@@ -200,5 +219,25 @@ void ASTUGameModeBase::GameOver()
 			Pawn->TurnOff();
 			Pawn->DisableInput(nullptr);
 		}
+	}
+	SetMatchState(ESTUMatchState::GameOver);
+}
+
+void ASTUGameModeBase::SetMatchState(ESTUMatchState State)
+{
+	if (MatchState == State) return;
+	MatchState = State;
+	OnMatchStateChanged.Broadcast(MatchState);
+}
+
+void ASTUGameModeBase::StopAllFire()
+{
+	for (auto Pawn : TActorRange<APawn>(GetWorld()))
+	{
+		if (!Pawn) continue;
+		const auto WeaponComponent = STUUtils::GetSTUPlayerComponent<USTUWeaponComponent>(Pawn);
+		if (!WeaponComponent) continue;
+		WeaponComponent->StopFire();
+		WeaponComponent->Zoom(false);
 	}
 }

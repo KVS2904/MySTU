@@ -49,7 +49,6 @@ void ASTUProjectile::OnProjectileHit(UPrimitiveComponent* HitComponent,
 
 	MovementComponent->StopMovementImmediately();
 
-	//make damage
 	UGameplayStatics::ApplyRadialDamage(GetWorld(), DamageAmount, GetActorLocation(), DamageRadius, nullptr, {GetOwner()}, this, GetController(), DoFullDamage);
 
 	//DrawDebugSphere(GetWorld(), GetActorLocation(), DamageRadius, 24, FColor::Red, false, 5.0f);

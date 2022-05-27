@@ -6,9 +6,7 @@
 #include "GameFramework/PlayerState.h"
 #include "STUPlayerState.generated.h"
 
-/**
- * 
- */
+
 UCLASS()
 class SHOOTTHEMUP_API ASTUPlayerState : public APlayerState
 {

@@ -26,7 +26,4 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "VFX")
 		TMap<UPhysicalMaterial*, FImpactData> ImpactDataMap;
-
-public:	
-		
 };

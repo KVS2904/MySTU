@@ -8,16 +8,16 @@
 #include "Components/STUWeaponComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Controller.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundCue.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSTUBaseCharacter, All, All)
 
 
-// Sets default values
 ASTUBaseCharacter::ASTUBaseCharacter(const FObjectInitializer& ObjInit)
 	: Super(ObjInit.SetDefaultSubobjectClass<USTUCharacterMovementComponent>
 		(ACharacter::CharacterMovementComponentName))
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	CurrentMovementComponent = Cast<USTUCharacterMovementComponent>(GetMovementComponent());
@@ -25,7 +25,6 @@ ASTUBaseCharacter::ASTUBaseCharacter(const FObjectInitializer& ObjInit)
 	WeaponComponent = CreateDefaultSubobject<USTUWeaponComponent>("WeaponComponent");
 }
 
-// Called when the game starts or when spawned
 void ASTUBaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -37,11 +36,9 @@ void ASTUBaseCharacter::BeginPlay()
 	OnHealthChanged(HealthComponent->GetHealth());
 	HealthComponent->OnDeath.AddUObject(this, &ASTUBaseCharacter::OnDeath);
 	HealthComponent->OnHealthChanged.AddUObject(this, &ASTUBaseCharacter::OnHealthChanged);
-	//OnTakeAnyDamage.AddDynamic(this, &ASTUBaseCharacter::OnTakeAnyDamageHandle);
 	LandedDelegate.AddDynamic(this, &ASTUBaseCharacter::OnGroundLanded);
 }
 
-// Called every frame
 void ASTUBaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -78,9 +75,12 @@ void ASTUBaseCharacter::OnDeath()
 	SetLifeSpan(5.0f);
 	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	WeaponComponent->StopFire();
+	WeaponComponent->Zoom(false);
 
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetMesh()->SetSimulatePhysics(true);
+
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), DeathSound, GetActorLocation());
 }
 
 void ASTUBaseCharacter::OnHealthChanged(float Health) {}
@@ -93,4 +93,18 @@ void ASTUBaseCharacter::OnGroundLanded(const FHitResult& Hit)
 	TakeDamage(FinalDamage, FDamageEvent(), nullptr, nullptr);
 }
 
+
+void ASTUBaseCharacter::TurnOff()
+{
+	WeaponComponent->StopFire();
+	WeaponComponent->Zoom(false);
+	Super::TurnOff();
+}
+
+void ASTUBaseCharacter::Reset()
+{
+	WeaponComponent->StopFire();
+	WeaponComponent->Zoom(false);
+	Super::Reset();
+}
 

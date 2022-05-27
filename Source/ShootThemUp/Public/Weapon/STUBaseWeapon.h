@@ -10,6 +10,7 @@
 class USkeletalMeshComponent;
 class UNiagaraSystem;
 class UNiagaraComponent;
+class USoundCue;
 
 UCLASS()
 class SHOOTTHEMUP_API ASTUBaseWeapon : public AActor
@@ -34,6 +35,8 @@ public:
 	bool TryToAddAmmo(int32 ClipsAmount);
 	bool IsAmmoEmpty() const;
 
+	virtual void Zoom(bool Enabled) {}
+
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
 		USkeletalMeshComponent* WeaponMesh;
@@ -46,9 +49,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
 		FAmmoData DefaultAmmo{15, 10, false};
-
-	//UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
-		//float BulletSpread = 1.5f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
 		FWeaponUIData UIData;
@@ -56,7 +56,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "VFX")
 		UNiagaraSystem* MuzzleFX;
 
-
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sound")
+		USoundCue* FireSound;
 
 	virtual void BeginPlay() override;
 
